@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Birthday Surprise! 🎉</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Font and Global Styles */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Pacifico:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Enhanced background for a deeper space/party feel */
+            background: radial-gradient(circle at 50% 100%, #1a0033 0%, #000000 70%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            color: white;
+            padding: 1rem;
+            position: relative; /* Needed for confetti and banner positioning */
+        }
+
+        /* Essential 3D Flip Class (Kept for compatibility, though not used) */
+        .backface-hidden {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+
+        /* Loading Spinner CSS */
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .loading-ring {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 10px solid transparent;
+            /* Color change for better visibility/theming */
+            border-top: 10px solid #ff00ff;
+            border-left: 10px solid #ff00ff;
+            animation: rotate 1.5s linear infinite, pulse 1.5s infinite;
+            filter: drop-shadow(0 0 15px rgba(255, 0, 255, 0.9)); /* Stronger shadow */
+        }
+
+        /* Custom Title Gradient/Shadow */
+        .gradient-text {
+            color: transparent;
+            background-clip: text;
+            /* Enhanced gradient with more vibrant colors */
+            background-image: linear-gradient(90deg, #ff00ff, #ff6b81, #ffa800);
+            filter: drop-shadow(0 0 8px rgba(255, 107, 129, 0.9)); /* Stronger, clearer shadow */
+            font-family: 'Pacifico', cursive;
+        }
+
+        /* Button Styling */
+        .gradient-button {
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            filter: drop-shadow(0 6px 12px rgba(139, 92, 246, 0.6)); /* Stronger shadow */
+            z-index: 20; /* Ensure button is above other elements */
+            position: relative;
+        }
+        .gradient-button:hover {
+            filter: drop-shadow(0 8px 16px rgba(139, 92, 246, 1));
+            transform: translateY(-3px);
+        }
+
+        /* Confetti Animation (Simplified) */
+        .confetti-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 10;
+        }
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: transparent;
+            animation: fall 5s linear infinite;
+        }
+        @keyframes fall {
+            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+
+        /* Banner/Garland Styling */
+        .banner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            overflow: hidden;
+            z-index: 10;
+        }
+        .banner-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ADDED: Candle Flame Pulse Animation */
+        @keyframes flame-pulse {
+            0%, 100% { transform: scaleY(1); opacity: 1; }
+            50% { transform: scaleY(1.1) translateY(-2px); opacity: 0.9; }
+        }
+        .flame {
+            animation: flame-pulse 1s ease-in-out infinite alternate;
+            transform-origin: bottom;
+        }
+
+        /* ADDED: Balloon Styling and Animation */
+        .balloon {
+            position: absolute;
+            width: 60px;
+            height: 80px;
+            border-radius: 50% 50% 50% 50%;
+            transform-origin: bottom center;
+            box-shadow: inset -10px -10px 0 rgba(0, 0, 0, 0.2);
+            z-index: 5;
+            animation: rise 10s linear infinite;
+            cursor: default;
+        }
+        .balloon::before {
+            content: "";
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            width: 1px;
+            height: 100px; /* String length */
+            background: white;
+            box-shadow: 0 0 2px rgba(255, 255, 255, 0.5);
+        }
+        @keyframes rise {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="app-container" class="w-full max-w-xl mx-auto text-center p-4">
+    </div>
+
+<script>
+    // --- Global State and Constants ---
+    const appContainer = document.getElementById('app-container');
+
+    // The code to unlock the message (Anniversary Date: DDMM)
+    // Date: 03, Month: 06 -> Code: 0306
+    const SECRET_CODE = '0306';
+
+    let state = {
+        // loading, greeting, cake_start, cake_decorated, cake_lit, balloons_pop_up, birthday_questions, puzzle_locked, message_open, final_thank_you
+        scene: 'loading',
+        countdown: 3,
+        puzzleError: false, // Tracks if the last code attempt failed
+        // UPDATED: Removed 'support' question
+        birthdayAnswers: {
+            new_try: '',
+            three_words: '',
+            perfect_day: ''
+        },
+    };
+
+    // --- Utility Functions ---
+
+    /** Renders confetti particles */
+    function renderConfetti() {
+        // Only append if it doesn't already exist to avoid clutter
+        if (document.querySelector('.confetti-container:not(#confetti-blast)')) return;
+
+        const confettiContainer = document.createElement('div');
+        confettiContainer.className = 'confetti-container';
+
+        for (let i = 0; i < 50; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'confetti absolute rounded-full';
+            particle.style.left = `${Math.random() * 100}vw`;
+            particle.style.top = `${Math.random() * -10}vh`;
+            particle.style.animationDelay = `${Math.random() * 5}s`;
+            particle.style.backgroundColor = ['#FF6B81', '#FFA800', '#FF00FF', '#00FFFF', '#8B5CF6'][Math.floor(Math.random() * 5)];
+            particle.style.width = `${Math.random() * 5 + 5}px`;
+            particle.style.height = particle.style.width;
+            confettiContainer.appendChild(particle);
+        }
+        appContainer.appendChild(confettiContainer);
+    }
+
+    /** Renders the banner garland */
+    function renderBanner() {
+        return `
+            <div class="banner">
+                <svg class="banner-svg" viewBox="0 0 1000 50" preserveAspectRatio="none">
+                    ${['#FF6B81', '#FFA800', '#FF00FF', '#00FFFF', '#8B5CF6'].map((color, i) => `
+                        <polygon points="${i*200-50},0 ${i*200+100},50 ${(i+1)*200+50},0" fill="${color}" stroke="#1a0033" stroke-width="2" />
+                    `).join('')}
+                    ${['#FF6B81', '#FFA800', '#FF00FF', '#00FFFF', '#8B5CF6'].map((color, i) => `
+                        <path d="M ${i*200} 0 C ${i*200+50} 30, ${i*200+150} 30, ${(i+1)*200} 0" stroke="#FFFFFF" stroke-width="2" fill="none" />
+                    `).join('')}
+                </svg>
+            </div>
+        `;
+    }
+
+    /** SCENE 1: Loading Countdown */
+    function renderLoading() {
+        return `
+            <div class="flex flex-col items-center justify-center h-[80vh] transition-opacity duration-1000">
+                <div id="countdown-ring" class="loading-ring text-pink-400 border-pink-600/50">
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <span id="countdown-text" class="text-7xl font-extrabold gradient-text">${state.countdown}</span>
+                    </div>
+                </div>
+                <p class="text-xl mt-8 gradient-text" style="font-size: 1.5rem;">Crafting your special moment...</p>
+            </div>
+        `;
+    }
+
+    /** SCENE 2: Initial Greeting */
+    function renderGreeting() {
+        return `
+            <div class="flex flex-col items-center justify-center p-4">
+                <h1 class="text-4xl md:text-5xl font-extrabold my-8 gradient-text text-center leading-tight">
+                    Happy Birthday to the Most Amazing Person in the World! 💖
+                </h1>
+                <p class="text-xl text-gray-300 mb-4 px-4">
+                    Today is all about celebrating **you** and the incredible joy you bring into my life.
+                </p>
+                <p class="text-lg text-gray-400 mb-10 px-4">
+                    I've prepared a little interactive surprise, filled with love and a couple of questions just for your eyes. Get ready for your special moment!
+                </p>
+                <button onclick="changeScene('cake_start')"
+                    class="gradient-button px-6 py-3 text-xl rounded-full bg-gradient-to-r from-pink-500 to-violet-600 hover:from-pink-600 hover:to-violet-700 font-bold transition-all flex items-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6"/><path d="M12 22V4"/><path d="m20 7-4-4-4 4-4-4-4 4"/></svg>
+                    <span>Start the surprise</span>
+                </button>
+            </div>
+        `;
+    }
+
+    /** SVG for the Cake */
+    function CakeSVG(lit = false) {
+        const frostingColor = '#F0F0F0';
+        const cakeColor = '#4B2C10';
+        const layer1Color = '#361C05';
+
+        // Candle
+        const candleColor = lit ? '#FFD700' : '#FF4500';
+        const flameGlow = lit ? `
+            <circle cx="250" cy="95" r="15" fill="#FFD700" filter="url(#glow)" class="flame-glow"/>
+            <path d="M 250 100 Q 255 80, 250 70 Q 245 80, 250 100 Z" fill="#FF4500" class="flame"/>
+            <path d="M 250 100 Q 252 85, 250 78 Q 248 85, 250 100 Z" fill="#FFA800" class="flame"/>
+            <path d="M 250 100 V 85" stroke="white" stroke-width="2" class="flame" />
+        ` : `<path d="M 250 120 V 100" stroke="#8B0000" stroke-width="3" />`; // Unlit wick
+
+        // Decorations (Sprinkles on the frosting layer)
+        const sprinkles = state.scene === 'cake_decorated' || state.scene === 'cake_lit' ? `
+            ${[...Array(30)].map((_, i) => {
+                const x = 110 + Math.random() * 280;
+                const y = 145 + Math.random() * 5;
+                const color = ['#FF6B81', '#FF00FF', '#00FFFF', '#FFA800'][Math.floor(Math.random() * 4)];
+                return `<rect x="${x}" y="${y}" width="2" height="5" fill="${color}" transform="rotate(${Math.random() * 90}, ${x}, ${y})" />`;
+            }).join('')}
+        ` : '';
+
+        return `
+            <svg viewBox="0 0 500 500" class="w-full max-w-sm mx-auto" style="height: auto;">
+                <defs>
+                    <filter id="glow">
+                        <feGaussianBlur stdDeviation="7" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                    <filter id="cakeDropShadow">
+                        <feDropShadow dx="0" dy="5" stdDeviation="3" flood-color="#000" flood-opacity="0.5"/>
+                    </filter>
+                </defs>
+
+                <ellipse cx="250" cy="450" rx="200" ry="25" fill="${layer1Color}" filter="url(#cakeDropShadow)" />
+                <rect x="50" y="350" width="400" height="100" fill="${cakeColor}" />
+
+                <ellipse cx="250" cy="350" rx="180" ry="20" fill="${layer1Color}" filter="url(#cakeDropShadow)" />
+                <rect x="70" y="250" width="360" height="100" fill="${cakeColor}" />
+
+                <ellipse cx="250" cy="250" rx="150" ry="15" fill="${layer1Color}" filter="url(#cakeDropShadow)" />
+                <rect x="100" y="150" width="300" height="100" fill="${cakeColor}" />
+
+                <path d="M 100 150 A 150 15 0 0 1 400 150 L 400 165 A 150 15 0 0 0 100 165 Z" fill="${frostingColor}" filter="url(#cakeDropShadow)" />
+                <ellipse cx="250" cy="150" rx="150" ry="15" fill="${frostingColor}" />
+                ${sprinkles} <rect x="245" y="100" width="10" height="50" fill="${candleColor}" rx="5" ry="5" filter="url(#cakeDropShadow)" />
+
+                ${flameGlow}
+
+            </svg>
+        `;
+    }
+
+
+    /** SCENE 3: Cake Interaction */
+    function renderCake() {
+        const isDecorated = state.scene === 'cake_decorated' || state.scene === 'cake_lit';
+        const isLit = state.scene === 'cake_lit';
+
+        let button;
+        let instructionText;
+
+        if (!isDecorated) {
+            instructionText = `<p class="text-xl text-gray-300 mb-8">It's a little plain... let's add some magic!</p>`;
+            button = `
+                <button onclick="decorateCake()"
+                    class="gradient-button px-6 py-3 text-xl rounded-full bg-gradient-to-r from-pink-500 to-violet-600 hover:from-pink-600 hover:to-violet-700 font-bold transition-all flex items-center space-x-2 mx-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H7M14 8H10M16 11H8M17 14H7M14 17H10"/></svg>
+                    <span>Decorate Cake</span>
+                </button>
+            `;
+        } else if (isDecorated && !isLit) {
+            instructionText = `<p class="text-xl text-gray-300 mb-8">Perfect! Now for the most important part...</p>`;
+            button = `
+                <button onclick="lightCandle()"
+                    class="gradient-button px-6 py-3 text-xl rounded-full bg-gradient-to-r from-pink-500 to-violet-600 hover:from-pink-600 hover:to-violet-700 font-bold transition-all flex items-center space-x-2 mx-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v3a2 2 0 1 0 4 0v-3"/><path d="M14 2c-3.76 0-7 2.76-7 7 0 4.25 7 13 7 13s7-8.75 7-13c0-4.24-3.24-7-7-7z"/><path d="M12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg>
+                    <span>Light the Candle</span>
+                </button>
+            `;
+        } else if (isLit) {
+            // SCENE CHANGE: Directing to the new balloons pop-up screen
+            instructionText = `<h2 class="text-4xl md:text-5xl font-extrabold gradient-text mb-6">Happy Birthday, Princess!</h2>`;
+            button = `
+                <div class="pt-4">
+                    <button onclick="changeScene('balloons_pop_up')"
+                        class="gradient-button px-6 py-3 text-xl rounded-full bg-gradient-to-r from-purple-500 to-red-500 hover:from-purple-600 hover:to-red-600 font-bold transition-all flex items-center mx-auto space-x-2">
+                        <span>See the Next Surprise!</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 17 5-5-5-5"/><path d="m18 12h-18"/></svg>
+                    </button>
+                </div>
+            `;
+        }
+
+        return `
+            ${isDecorated ? renderBanner() : ''}
+            <div class="flex flex-col items-center justify-center p-4 pt-16 relative">
+                ${CakeSVG(isLit)}
+                <div class="mt-8">
+                    ${instructionText}
+                    ${button}
+                </div>
+            </div>
+            ${isLit ? `<div id="confetti-blast" class="confetti-container absolute inset-0"></div>` : ''}
+        `;
+    }
+
+    /** SCENE 4: Balloons and Pop-up (NEW SCENE) */
+    function renderBalloonsPopUp() {
+        // Function to create an individual balloon element
+        const Balloon = (color, left, duration, delay) => {
+            return `<div class="balloon" style="
+                background: ${color};
+                left: ${left}%;
+                animation-duration: ${duration}s;
+                animation-delay: ${delay}s;
+                /* Random hue for color variation based on original */
+                filter: hue-rotate(${Math.random() * 360}deg);
+                /* Start off-screen */
+                top: 100vh;
+            "></div>`;
+        };
+
+        const balloonColors = ['#ff00ff', '#ffa800', '#ff6b81', '#00ffff', '#8b5cf6'];
+        let balloonsHTML = '';
+
+        // Generate 20 balloons with random properties
+        for (let i = 0; i < 20; i++) {
+            const color = balloonColors[i % balloonColors.length];
+            const left = Math.random() * 80 + 10; // 10% to 90% width
+            const duration = 8 + Math.random() * 4; // 8s to 12s
+            const delay = Math.random() * 8; // 0s to 8s
+            balloonsHTML += Balloon(color, left, duration, delay);
+        }
+
+        // Render the scene first
+        const sceneHTML = `
+            ${renderBanner()}
+            <div id="balloon-scene" class="pt-16 p-4 flex flex-col items-center justify-center h-full min-h-screen relative overflow-hidden">
+                ${balloonsHTML}
+                <div class="z-20 text-center">
+                    <h2 class="text-4xl md:text-5xl font-extrabold gradient-text mb-4 text-center leading-tight">Balloons! Party Time! 🥳</h2>
+                    <p class="text-xl text-gray-300 mb-8 text-center">The first surprise is complete. Ready for the next one?</p>
+                    <button onclick="changeScene('birthday_questions')"
+                        class="gradient-button px-8 py-3 text-xl rounded-full bg-gradient-to-r from-violet-500 to-pink-600 hover:from-violet-600 hover:to-pink-700 font-bold transition-all flex items-center mx-auto space-x-2">
+                        <span>Continue to the Next Step</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 17 5-5-5-5"/><path d="m18 12h-18"/></svg>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Use a timeout to ensure the scene has rendered before showing the pop-up
+        setTimeout(() => {
+            // Trigger the special "pop-up"
+            alertBox(
+                "🎁 Happy Birthday! This surprise requires a moment of reflection... I have 3 questions for you before you unlock the final message!"
+            );
+        }, 600);
+
+        return sceneHTML;
+    }
+
+
+    /** SCENE 5: Birthday Questions (UPDATED to 3 Questions) */
+    function renderBirthdayQuestions() {
+        const questions = {
+            // REMOVED: support: "1. How can I best support you in reaching a goal you have for this new age?",
+            new_try: "1. What's something new you'd like us to try together as a couple this year?",
+            three_words: "2. If you had to describe our relationship in three words, what would they be?",
+            perfect_day: "3. What is one thing you have to do today to make it feel like your perfect birthday?"
+        };
+        const placeholders = [
+            "Adventure, cooking, learning a language?",
+            "Example: Always, Laughter, Home",
+            "Is it cake, a nap, or a surprise outing?"
+        ];
+
+        return `
+            ${renderBanner()}
+            <div class="pt-16 p-4 flex flex-col items-center justify-center">
+                <h2 class="text-4xl md:text-5xl font-extrabold gradient-text mb-8 text-center leading-tight">Your Birthday Reflections 💖</h2>
+                <p class="text-xl text-gray-300 mb-8 text-center">Answer these 3 questions for the next surprise! I cherish your thoughts.</p>
+
+                <div class="w-full space-y-6 text-left">
+                    ${Object.keys(state.birthdayAnswers).map((key, index) => `
+                        <div class="bg-white/5 p-4 rounded-xl shadow-2xl backdrop-blur-sm border border-violet-500/30">
+                            <label for="${key}" class="block text-lg font-semibold text-pink-300 mb-2">${questions[key]}</label>
+                            <textarea id="${key}" rows="2"
+                                class="w-full p-3 rounded-lg bg-white/10 border border-violet-400/50 text-white placeholder-gray-400 focus:ring-2 focus:ring-pink-500 outline-none transition-all resize-none"
+                                placeholder="${placeholders[index]}"
+                                onchange="updateAnswer('${key}', this.value)"
+                            >${state.birthdayAnswers[key]}</textarea>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <button onclick="proceedToPuzzle()"
+                    class="gradient-button mt-10 px-8 py-3 text-xl rounded-full bg-gradient-to-r from-violet-500 to-pink-600 hover:from-violet-600 hover:to-pink-700 font-bold transition-all flex items-center mx-auto space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M12 21V12M12 12H21"/></svg>
+                    <span>Finish & Proceed to Puzzle</span>
+                </button>
+            </div>
+        `;
+    }
+
+
+    /** SCENE 6: Puzzle Locked Screen */
+    function renderPuzzleLocked() {
+        const errorClass = state.puzzleError ? 'border-red-500 ring-red-500 animate-shake' : 'border-violet-500/50 ring-violet-500/30';
+        // HINT CORRECTED: Reflects DDMM format
+        const errorMessage = state.puzzleError ? '<p class="text-red-400 mt-4 text-lg animate-pulse">🔒 Incorrect Code. Try again! (Hint: It\'s our love anniversary date and month - **DDMM**)</p>' : '';
+
+        return `
+            ${renderBanner()}
+            <div class="pt-16 p-4 flex flex-col items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-24 h-24 text-violet-400 mb-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <h2 class="text-4xl md:text-5xl font-extrabold gradient-text mb-4 text-center">Unlock the Secret Message</h2>
+                <p class="text-xl text-gray-300 mb-10 text-center">Enter the special 4-digit code:</p>
+
+                <input type="number" id="secret-code-input" maxlength="4" placeholder="Code (e.g., 0306)"
+                    class="w-48 text-center text-4xl p-3 rounded-lg bg-white/10 text-white font-mono tracking-widest outline-none transition-all focus:ring-4 ${errorClass} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    oninput="this.value=this.value.slice(0,4)"
+                    style="letter-spacing: 0.5em;">
+
+                ${errorMessage}
+
+                <button onclick="handleCodeEntry()"
+                    class="gradient-button mt-12 px-8 py-3 text-xl rounded-full bg-gradient-to-r from-green-500 to-cyan-600 hover:from-green-600 hover:to-cyan-700 font-bold transition-all flex items-center mx-auto space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12V6a3 3 0 0 0-6 0v6M9 12h6"/></svg>
+                    <span>Try Code</span>
+                </button>
+            </div>
+        `;
+    }
+
+    /** SCENE 7: Secret Message Revealed (Answer Key Added Here) */
+    function renderMessageOpen() {
+        const messageContent = `
+Happy Birthday, my favorite person in the world!
+today is your birthday and i just wanted to wish you a happy birthday and i hope this year treats you well. i just want to say thank you for the part you played in my life. you were the first one i laughed the hardest with. the one to share all the secrets with. remember that time when you and i would stay on the phone with you for hours. it's been a little over  since we stopped talking, Just because we don't talk anymore, doesn't mean I've forgotten all about you, it doesn't mean that I no longer care.Truth is I still do,i stalk your account everyday. To see you, I just want you to know that, I'm still here, I just miss your presence, I miss you so much, I know you don't like me , i don't want to hurt you bcoz you told me to don't text but maybe it could be my last message for you , i don't want any other girl except you because you were my last and only friend who I want. You knew you're my happiness, caring partner everything else and if in this world it will be possible to come back to me please come back for sure bcoz i will always be waiting for you.......
+        `;
+
+        // UPDATED: Reflects the 3 remaining questions
+        const questions = {
+            new_try: "1. What's something new you'd like us to try together as a couple this year?",
+            three_words: "2. If you had to describe our relationship in three words, what would they be?",
+            perfect_day: "3. What is one thing you have to do today to make it feel like your perfect birthday?"
+        };
+
+        const answerKeyHTML = `
+            <div class="mt-8 pt-6 border-t border-pink-400/50">
+                <h4 class="text-xl font-bold mb-4 text-center text-pink-400">Birthday Reflections Answer Key (FOR SENDER EYES)</h4>
+                <div class="text-sm space-y-4">
+                    ${Object.keys(state.birthdayAnswers).map(key => `
+                        <div class="bg-violet-900/10 p-4 rounded-xl shadow-inner border border-violet-400/20">
+                            <p class="font-semibold text-pink-300 text-base">${questions[key]}</p>
+                            <p class="italic text-gray-100 whitespace-pre-wrap mt-2">**Answer**: ${state.birthdayAnswers[key]}</p>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        return `
+            ${renderBanner()}
+            <div class="pt-16 p-4 flex flex-col items-center justify-center">
+                <div class="w-full max-w-lg mx-auto mb-10">
+                    <div class="p-8 bg-white/5 backdrop-blur-md text-white rounded-xl shadow-2xl overflow-y-auto border border-pink-500/50" style="max-height: 500px;">
+                        <h3 class="text-3xl font-bold mb-6 text-center gradient-text">🎉 The Secret Message is UNLOCKED! 🎉</h3>
+                        <p class="text-lg leading-relaxed whitespace-pre-wrap text-left">${messageContent}</p>
+                        ${answerKeyHTML}
+                    </div>
+                </div>
+
+                <button onclick="changeScene('final_thank_you')"
+                    class="gradient-button mt-8 px-8 py-3 text-xl rounded-full bg-gradient-to-r from-pink-500 to-violet-600 hover:from-pink-600 hover:to-violet-700 font-bold transition-all flex items-center mx-auto space-x-2">
+                    <span>See the Final Wish</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 17 5-5-5-5"/><path d="m18 12h-18"/></svg>
+                </button>
+            </div>
+        `;
+    }
+
+    /** SCENE 8: Final Thank You Screen */
+    function renderFinalThankYou() {
+        return `
+            ${renderBanner()}
+            <div class="pt-16 p-4 flex flex-col items-center justify-center">
+                <h3 class="text-5xl md:text-6xl font-extrabold gradient-text mb-4 text-center">ONCE AGAIN WISHING YOU A VERRY HAPPY BIRTHDAY AND I LOVE YOU SOO MUCH! ❤️</h3>
+                <p class="text-2xl text-gray-300 mb-12 text-center">I hope you enjoyed this little surprise.</p>
+                <div class="w-24 h-24 text-6xl relative">
+                    <span class="absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75 animate-ping"></span>
+                    <span class="relative inline-flex rounded-full h-24 w-24 bg-pink-500 text-white flex items-center justify-center text-4xl shadow-xl">
+                        🥳
+                    </span>
+                </div>
+                <div class="mt-16">
+                    <button onclick="changeScene('loading')"
+                        class="gradient-button px-8 py-3 text-xl rounded-full bg-gradient-to-r from-gray-500 to-gray-700 hover:from-gray-600 hover:to-gray-800 font-bold transition-all flex items-center mx-auto space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+                        <span>Start Over</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    // --- Interaction Handlers ---
+
+    function decorateCake() {
+        state.scene = 'cake_decorated';
+        renderScene();
+        renderConfetti(); // Start a subtle, continuous confetti fall
+    }
+
+    function lightCandle() {
+        state.scene = 'cake_lit';
+        renderScene();
+        // Confetti blast on candle light
+        const blastContainer = document.getElementById('confetti-blast');
+        if (blastContainer) {
+            blastContainer.innerHTML = '';
+            for (let i = 0; i < 100; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'confetti absolute rounded-full';
+                particle.style.left = `${20 + Math.random() * 60}vw`; // Wider blast area
+                particle.style.top = `${30 + Math.random() * 30}vh`; // Start slightly higher
+                particle.style.animation = `fall ${1.5 + Math.random() * 2}s cubic-bezier(0.1, 0.9, 0.4, 1) forwards`; // Smoother blast fall
+                particle.style.animationDelay = `${Math.random() * 0.5}s`;
+                particle.style.backgroundColor = ['#FF6B81', '#FFA800', '#FF00FF', '#00FFFF', '#8B5CF6'][Math.floor(Math.random() * 5)];
+                particle.style.width = `${Math.random() * 5 + 5}px`;
+                particle.style.height = particle.style.width;
+                blastContainer.appendChild(particle);
+            }
+        }
+    }
+
+    // Function to update answers from the textareas
+    function updateAnswer(key, value) {
+        state.birthdayAnswers[key] = value;
+    }
+
+    // Function to check if all questions are answered and proceed
+    function proceedToPuzzle() {
+        const answers = state.birthdayAnswers;
+        // Check if all answers are non-empty after trimming whitespace
+        const allAnswered = Object.values(answers).every(answer => answer.trim() !== '');
+
+        if (allAnswered) {
+            changeScene('puzzle_locked');
+        } else {
+            alertBox('Please answer all three questions before proceeding! They are important to me. ❤️');
+        }
+    }
+
+    function handleCodeEntry() {
+        const input = document.getElementById('secret-code-input');
+        // Ensure input is treated as a string for comparison
+        const enteredCode = input.value.trim();
+
+        if (enteredCode === SECRET_CODE) {
+            state.puzzleError = false;
+            changeScene('message_open');
+        } else {
+            state.puzzleError = true;
+            renderScene(); // Re-render to show error message
+            const newInput = document.getElementById('secret-code-input');
+            if (newInput) newInput.value = ''; // Clear input on failure after re-render
+        }
+    }
+
+    // Custom Alert Box (replacing forbidden native alert() and confirm())
+    function alertBox(message) {
+        let alertModal = document.getElementById('custom-alert-modal');
+        if (!alertModal) {
+            alertModal = document.createElement('div');
+            alertModal.id = 'custom-alert-modal';
+            // Use Tailwind classes for the modal background and centering
+            alertModal.className = 'fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center transition-opacity duration-300 opacity-0 pointer-events-none';
+            alertModal.innerHTML = `
+                <div class="bg-gray-900 text-white p-6 rounded-xl shadow-2xl max-w-sm mx-4 transform scale-90 transition-transform duration-300 border border-pink-500">
+                    <p class="text-lg font-semibold mb-4 text-center" id="alert-message"></p>
+                    <button onclick="closeAlert()" class="w-full py-3 rounded-full bg-pink-500 text-white font-bold hover:bg-pink-600 transition shadow-lg">Got It</button>
+                </div>
+            `;
+            document.body.appendChild(alertModal);
+        }
+
+        document.getElementById('alert-message').textContent = message;
+        // Animation for showing the modal
+        requestAnimationFrame(() => {
+            alertModal.classList.remove('opacity-0', 'pointer-events-none');
+            alertModal.querySelector('div').classList.remove('scale-90');
+        });
+    }
+
+    function closeAlert() {
+        const alertModal = document.getElementById('custom-alert-modal');
+        if (alertModal) {
+            alertModal.querySelector('div').classList.add('scale-90');
+            alertModal.classList.add('opacity-0', 'pointer-events-none');
+        }
+    }
+
+    // --- Main State Controller ---
+
+    function renderScene() {
+        // Remove existing confetti container on every scene change to avoid duplication,
+        // unless it's the cake_lit scene which manages its own blast.
+        const existingConfetti = document.querySelector('.confetti-container:not(#confetti-blast)');
+        if (existingConfetti && state.scene !== 'cake_lit') {
+            existingConfetti.remove();
+        }
+
+        appContainer.innerHTML = ''; // Clear previous content
+
+        switch (state.scene) {
+            case 'loading':
+                appContainer.innerHTML = renderLoading();
+                startCountdown();
+                break;
+            case 'greeting':
+                appContainer.innerHTML = renderGreeting();
+                break;
+            case 'cake_start':
+            case 'cake_decorated':
+            case 'cake_lit':
+                appContainer.innerHTML = renderCake();
+                break;
+            case 'balloons_pop_up':
+                appContainer.innerHTML = renderBalloonsPopUp();
+                break;
+            case 'birthday_questions':
+                appContainer.innerHTML = renderBirthdayQuestions();
+                break;
+            case 'puzzle_locked':
+                appContainer.innerHTML = renderPuzzleLocked();
+                break;
+            case 'message_open':
+                appContainer.innerHTML = renderMessageOpen();
+                break;
+            case 'final_thank_you':
+                appContainer.innerHTML = renderFinalThankYou();
+                break;
+            default:
+                changeScene('loading');
+        }
+    }
+
+    // --- Initialization and Countdown Logic ---
+
+    function startCountdown() {
+        state.countdown = 3;
+        const interval = setInterval(() => {
+            state.countdown--;
+            const textElement = document.getElementById('countdown-text');
+
+            if (textElement) {
+                textElement.textContent = state.countdown;
+                // Add quick animation for dramatic countdown effect
+                textElement.classList.remove('animate-pulse');
+                void textElement.offsetWidth; // Trigger reflow
+                textElement.classList.add('animate-pulse');
+            }
+
+            if (state.countdown <= 0) {
+                clearInterval(interval);
+                changeScene('greeting');
+            }
+        }, 1000);
+    }
+
+    function changeScene(newScene) {
+        // Add a global fade-out/fade-in effect for smoother transitions
+        appContainer.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+        setTimeout(() => {
+            state.scene = newScene;
+            renderScene();
+            appContainer.classList.remove('opacity-0');
+        }, 500); // Wait for fade-out before rendering new scene
+    }
+
+    // Start the application when the window loads
+    window.onload = () => {
+        // Expose functions globally for inline HTML event handlers (e.g., onclick)
+        window.changeScene = changeScene;
+        window.decorateCake = decorateCake;
+        window.lightCandle = lightCandle;
+        window.handleCodeEntry = handleCodeEntry;
+        window.updateAnswer = updateAnswer;
+        window.proceedToPuzzle = proceedToPuzzle;
+        window.alertBox = alertBox;
+        window.closeAlert = closeAlert;
+
+        renderScene();
+    };
+
+</script>
+
+</body>
+</html>
+
